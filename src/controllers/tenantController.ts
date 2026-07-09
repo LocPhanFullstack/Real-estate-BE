@@ -121,3 +121,67 @@ export const getCurrentResidences = async (
     res.status(500).json({ message: `Error retrieving current residences: ${error.message}` });
   }
 };
+
+export const addFavoriteProperty = async (
+  req: Request<{ cognitoId: string; propertyId: string }>,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { cognitoId } = req.params;
+    const propertyId = Number(req.params.propertyId);
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { cognitoId },
+      include: { favorites: true },
+    });
+
+    if (!tenant) {
+      res.status(400).json({ message: "Tenant doesn't exist" });
+      return;
+    }
+
+    const existingFavorites = tenant.favorites || [];
+
+    if (!existingFavorites.some((fav) => fav.id === propertyId)) {
+      const updatedTenant = await prisma.tenant.update({
+        where: { cognitoId },
+        data: {
+          favorites: {
+            connect: { id: propertyId },
+          },
+        },
+        include: { favorites: true },
+      });
+      res.json(updatedTenant);
+    } else {
+      res.status(409).json({ message: "Property already added as favorite" });
+    }
+  } catch (error: any) {
+    console.error("addFavoriteProperty error:", error);
+    res.status(500).json({ message: `Error adding favorite property: ${error.message}` });
+  }
+};
+
+export const removeFavoriteProperty = async (
+  req: Request<{ cognitoId: string; propertyId: string }>,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { cognitoId } = req.params;
+    const propertyId = Number(req.params.propertyId);
+    const updatedTenant = await prisma.tenant.update({
+      where: { cognitoId },
+      data: {
+        favorites: {
+          disconnect: { id: propertyId },
+        },
+      },
+      include: { favorites: true },
+    });
+
+    res.json(updatedTenant);
+  } catch (error: any) {
+    console.error("removeFavoriteProperty error:", error);
+    res.status(500).json({ message: `Error removing favorite property: ${error.message}` });
+  }
+};
