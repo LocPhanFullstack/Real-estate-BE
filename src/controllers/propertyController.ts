@@ -89,18 +89,14 @@ export const getProperties = async (req: Request, res: Response): Promise<void> 
       const lat = parseFloat(latitude as string);
       const lng = parseFloat(longitude as string);
       const radiusInKilometers = 1000;
-      const degrees = radiusInKilometers / 111; // Convert kilometer to degree
 
       whereConditions.push(
-        Prisma.sql`ST_DWithin(l.coordinates::geometry, ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326), ${degrees})`,
+        Prisma.sql`ST_DWithin(
+        l.coordinates,
+        ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
+        ${radiusInKilometers * 1000}
+      )`,
       );
-      //   whereConditions.push(
-      //     Prisma.sql`ST_DWithin(
-      //   l.coordinates,
-      //   ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
-      //   ${radiusInKilometers * 1000}
-      // )`,
-      //   );
     }
 
     const completeQuery = Prisma.sql`
