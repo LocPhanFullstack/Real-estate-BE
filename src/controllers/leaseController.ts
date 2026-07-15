@@ -1,11 +1,14 @@
 import { Request, Response } from "express";
 import prisma from "../libs/prisma";
 
-// TODO: missing ownership check — getLeases/getLeasePayments leak data across users
-
 export const getLeases = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { id: userId, role } = req.user!;
     const leases = await prisma.lease.findMany({
+      where:
+        role.toLowerCase() === "manager"
+          ? { property: { managerCognitoId: userId } }
+          : { tenantCognitoId: userId },
       include: {
         tenant: true,
         property: true,
@@ -30,6 +33,29 @@ export const getLeasePayments = async (
       res.status(400).json({ message: "Invalid lease id" });
       return;
     }
+
+    const { id: userId, role } = req.user!;
+
+    const lease = await prisma.lease.findUnique({
+      where: { id: leaseId },
+      include: { property: true },
+    });
+
+    if (!lease) {
+      res.status(404).json({ message: "Lease not found" });
+      return;
+    }
+
+    const isOwner =
+      role.toLowerCase() === "manager"
+        ? lease.property.managerCognitoId === userId
+        : lease.tenantCognitoId === userId;
+
+    if (!isOwner) {
+      res.status(403).json({ message: "Access denied" });
+      return;
+    }
+
     const payments = await prisma.payment.findMany({
       where: { leaseId },
     });
