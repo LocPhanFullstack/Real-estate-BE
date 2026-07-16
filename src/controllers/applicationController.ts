@@ -2,22 +2,18 @@ import { Request, Response } from "express";
 import prisma from "../libs/prisma";
 import { calculateNextPaymentDate } from "../utils";
 
-// TODO: missing ownership check — getLeases/getLeasePayments leak data across users
-
 const VALID_STATUSES = ["Pending", "Denied", "Approved"];
 
 export const getListApplications = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId, userType } = req.query;
+    const { id: userId, role: userType } = req.user!;
 
     let whereClause = {};
 
-    if (userId && userType) {
-      if (userType === "tenant") {
-        whereClause = { tenantCognitoId: userId };
-      } else if (userType === "manager") {
-        whereClause = { property: { managerCognitoId: userId } };
-      }
+    if (userType.toLowerCase() === "tenant") {
+      whereClause = { tenantCognitoId: userId };
+    } else if (userType.toLowerCase() === "manager") {
+      whereClause = { property: { managerCognitoId: userId } };
     }
 
     const applications = await prisma.application.findMany({
@@ -68,8 +64,13 @@ export const getListApplications = async (req: Request, res: Response): Promise<
 
 export const createApplication = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { applicationDate, propertyId, tenantCognitoId, name, email, phoneNumber, message } =
-      req.body;
+    const { applicationDate, propertyId, name, email, phoneNumber, message } = req.body;
+    const { id: tenantCognitoId, role } = req.user!;
+
+    if (role.toLowerCase() !== "tenant") {
+      res.status(403).json({ message: "Only tenants can submit applications" });
+      return;
+    }
 
     const property = await prisma.property.findUnique({
       where: { id: propertyId },
@@ -97,7 +98,7 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
 
     res.status(201).json(application);
   } catch (error: any) {
-    console.error("creatingApplication error:", error);
+    console.error("createApplication error:", error);
     res.status(500).json({ message: `Error creating application: ${error.message}` });
   }
 };
@@ -181,6 +182,7 @@ export const updateApplicationStatus = async (req: Request, res: Response): Prom
 
     res.json(updatedApplication);
   } catch (error: any) {
+    console.error("updateApplicationStatus error:", error);
     res.status(500).json({ message: `Error updating application status: ${error.message}` });
   }
 };

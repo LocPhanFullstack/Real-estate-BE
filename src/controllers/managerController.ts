@@ -7,7 +7,7 @@ export const getManager = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
 
     if (!cognitoId) {
       res.status(400).json({ message: "Missing cognitoId" });
@@ -54,7 +54,7 @@ export const updateManager = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
     const { name, email, phoneNumber } = req.body;
 
     if (!cognitoId) {
@@ -62,7 +62,7 @@ export const updateManager = async (
       return;
     }
 
-    const updateManager = await prisma.manager.update({
+    const updatedManager = await prisma.manager.update({
       where: { cognitoId },
       data: {
         name,
@@ -71,7 +71,7 @@ export const updateManager = async (
       },
     });
 
-    res.status(201).json(updateManager);
+    res.status(200).json(updatedManager);
   } catch (error: any) {
     console.error("updateManager error:", error);
     res.status(500).json({ message: `Error updating manager: ${error.message}` });
@@ -83,7 +83,12 @@ export const getManagerProperties = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId, role } = req.user!;
+
+    if (role.toLowerCase() !== "manager") {
+      res.status(403).json({ message: "Access denied" });
+      return;
+    }
 
     const properties = await prisma.property.findMany({
       where: { managerCognitoId: cognitoId },

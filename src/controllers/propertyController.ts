@@ -171,9 +171,21 @@ export const getProperty = async (req: Request<{ id: number }>, res: Response): 
 
 export const createProperty = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { id: managerCognitoId, role } = req.user!;
+
+    if (role.toLowerCase() !== "manager") {
+      res.status(403).json({ message: "Only managers can create properties" });
+      return;
+    }
+
     const files = req.files as Express.Multer.File[];
-    const { address, city, state, country, postalCode, managerCognitoId, ...propertyData } =
-      req.body;
+
+    if (!files || files.length === 0) {
+      res.status(400).json({ message: "At least one property photo is required" });
+      return;
+    }
+
+    const { address, city, state, country, postalCode, ...propertyData } = req.body;
 
     const photoUrls = await Promise.all(
       files.map(async (file) => {

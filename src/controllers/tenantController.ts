@@ -7,7 +7,7 @@ export const getTernant = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
 
     if (!cognitoId) {
       res.status(400).json({ message: "Missing cognitoId" });
@@ -34,7 +34,8 @@ export const getTernant = async (
 
 export const createTernant = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { cognitoId, name, email, phoneNumber } = req.body;
+    const { id: cognitoId } = req.user!;
+    const { name, email, phoneNumber } = req.body;
 
     const ternant = await prisma.tenant.create({
       data: {
@@ -57,7 +58,7 @@ export const updateTernant = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
     const { name, email, phoneNumber } = req.body;
 
     if (!cognitoId) {
@@ -86,7 +87,7 @@ export const getCurrentResidences = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
 
     const residences = await prisma.property.findMany({
       where: { tenants: { some: { cognitoId } } },
@@ -127,7 +128,7 @@ export const addFavoriteProperty = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
     const propertyId = Number(req.params.propertyId);
 
     const tenant = await prisma.tenant.findUnique({
@@ -167,7 +168,7 @@ export const removeFavoriteProperty = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { cognitoId } = req.params;
+    const { id: cognitoId } = req.user!;
     const propertyId = Number(req.params.propertyId);
     const updatedTenant = await prisma.tenant.update({
       where: { cognitoId },

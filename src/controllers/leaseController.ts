@@ -62,7 +62,7 @@ export const getLeasePayments = async (
 
     res.json(payments);
   } catch (error: any) {
-    console.error("getLeasePayment error:", error);
-    res.status(500).json({ message: `Error retrieving lease payment: ${error.message}` });
+    console.error("getLeasePayments error:", error);
+    res.status(500).json({ message: `Error retrieving lease payments: ${error.message}` });
   }
 };
