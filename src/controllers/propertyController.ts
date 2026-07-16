@@ -254,3 +254,46 @@ export const createProperty = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ message: `Error creating property: ${error.message}` });
   }
 };
+
+export const getPropertyLease = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const propertyId = Number(req.params.id);
+
+    if (isNaN(propertyId)) {
+      res.status(400).json({ message: "Invalid property ID" });
+      return;
+    }
+
+    const { id: userId, role } = req.user!;
+
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId },
+    });
+
+    if (!property) {
+      res.status(404).json({ message: "Property not found" });
+      return;
+    }
+
+    if (role.toLowerCase() !== "manager" || property.managerCognitoId !== userId) {
+      res.status(403).json({ message: "Access denied" });
+      return;
+    }
+
+    const leases = await prisma.lease.findMany({
+      where: {
+        propertyId,
+        endDate: { gte: new Date() },
+      },
+      include: {
+        tenant: true,
+      },
+      orderBy: { startDate: "desc" },
+    });
+
+    res.json(leases);
+  } catch (error: any) {
+    console.error("getPropertyLeases error:", error);
+    res.status(500).json({ message: `Error retrieving property leases: ${error.message}` });
+  }
+};
